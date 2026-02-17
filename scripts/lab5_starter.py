@@ -59,9 +59,10 @@ class PIDController:
 
         self.p = self.kP * err
         self.i += self.kI * (err * dt)        
+        self.i = self.clamp(self.i, self.i_min, self.i_max)
         self.d = self.kD * (de/dt)
 
-        output = self.p + self.clamp(self.i, self.i_min, self.i_max) + self.d
+        output = self.p + self.i + self.d
         return self.clamp(output, self.u_min, self.u_max)
 
 
@@ -180,7 +181,7 @@ class GoalAngleController:
 
         # define PID controller angular velocity
         ######### Your code starts here #########
-        self.angular_PID = PIDController(0.05, 0.4, 0.0, -2, 2, -1 * MAX_ROT_VEL, MAX_ROT_VEL)
+        self.angular_PID = PIDController(1, 0.2, 0.01, -1, 1, -1 * MAX_ROT_VEL, MAX_ROT_VEL)
 
         ######### Your code ends here #########
 
@@ -197,7 +198,7 @@ class GoalAngleController:
             return None
 
         # Calculate error in orientation
-        angle_error = math.atan2(math.sin(self.goal_angle - self.current_position["theta"]), math.cos(self.goal_angle - self.current_position["theta"]))
+        angle_error = -1 * math.atan2(math.sin(self.goal_angle - self.current_position["theta"]), math.cos(self.goal_angle - self.current_position["theta"]))
 
         # Ensure angle error is within -pi to pi range
         if angle_error > math.pi:

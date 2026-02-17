@@ -169,10 +169,7 @@ class GoalAngleController:
             return None
 
         # Calculate error in orientation
-        ######### Your code starts here #########
-        angle_error = math.atan2(sin(target_angle - current_angle), cos(target_angle - current_angle))
-
-        ######### Your code ends here #########
+        angle_error = math.atan2(sin(target_angle - self.current_position["theta"]), cos(target_angle - self.current_position["theta"]))
 
         # Ensure angle error is within -pi to pi range
         if angle_error > math.pi:
@@ -191,7 +188,7 @@ class GoalAngleController:
                 continue
 
             # Calculate control commands using angular PID controller and stop if close enough to goal
-            u = -1 * self.angular_PD.control(error, rospy.get_rostime())
+            u = -1 * self.angular_PD.control(angle_error, rospy.get_rostime())
             ctrl_msg.angular.z = u
             self.vel_pub.publish(ctrl_msg)
 

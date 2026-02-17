@@ -19,20 +19,50 @@ class PIDController:
     Generates control action taking into account instantaneous error (proportional action),
     accumulated error (integral action) and rate of change of error (derivative action).
     """
-
-    def __init__(self, kP, kI, kD, kS, u_min, u_max):
+    def __init__(self, kP, kD, kI, i_min, i_max, u_min, u_max):
         assert u_min < u_max, "u_min should be less than u_max"
-        # Initialize PID variables here
-        ######### Your code starts here #########
+        assert i_min < i_max, "i_min should be less than i_max"
 
-        ######### Your code ends here #########
+        self.p = 0.0
+        self.i = 0.0
+        self.d = 0.0
+
+        self.kP = kP
+        self.kD = kD
+        self.kI = kI
+
+        self.i_min = i_min
+        self.i_max = i_max
+        self.u_min = u_min
+        self.u_max = u_max
+
+        self.t_prev = None
+        self.e_prev = 0.0
+
+    def clamp(self, raw, floor, ceil):
+        return floor if raw < floor else (ceil if raw > ceil else raw)
 
     def control(self, err, t):
-        pass
-        # computer PID control action here
-        ######### Your code starts here #########
+        if (self.t_prev is None):
+            self.t_prev = t
+            return 0
 
-        ######### Your code ends here #########
+        dt = t - self.t_prev
+        self.t_prev = t
+
+        if dt <= rospy.Duration.from_sec(1e-10):
+            return 0
+
+        de = err - self.e_prev
+        dt = dt.to_sec()
+        self.e_prev = err
+
+        self.p = self.kP * err
+        self.i += self.kI * (err * dt)        
+        self.d = self.kD * (de/dt)
+
+        output = self.p + self.clamp(self.i, self.i_min, self.i_max) + self.d
+        return self.clamp(output, self.u_min, self.u_max)
 
 
 # PD controller class
@@ -70,6 +100,7 @@ class PDController:
             return 0
 
         de = err - self.e_prev
+        self.e_prev = err
         output = (self.kP * err) + (self.kD * (de/dt.to_sec()))
         return self.clamp(output)
 
@@ -88,7 +119,7 @@ class GoalPositionController:
         self.current_position = None
 
         # define PID controllers for linear and angular velocities
-        self.angular_PD = PDController(0.2, 0.2, -1 * MAX_ROT_VEL, MAX_ROT_VEL)
+        self.angular_PID = PIDController(0.2, 0.2, 0.2, -1000, 1000, -1 * MAX_ROT_VEL, MAX_ROT_VEL)
 
     def odom_callback(self, msg):
         # Extracting current position from Odometry message
@@ -128,11 +159,8 @@ class GoalPositionController:
             distance_error, angle_error = error
 
             # Calculate control commands using linear and angular PID controllers and stop if close enough to goal
-            ######### Your code starts here #########
-            u = -1 * self.angular_PD.control(error, rospy.get_rostime())
+            u = -1 * self.angular_PID.control(error, rospy.get_rostime())
             ctrl_msg.angular.z = u
-
-            ######### Your code ends here #########
             rate.sleep()
 
 
@@ -152,7 +180,7 @@ class GoalAngleController:
 
         # define PID controller angular velocity
         ######### Your code starts here #########
-        self.angular_PD = PDController(0.2, 0.2, -1 * MAX_ROT_VEL, MAX_ROT_VEL)
+        self.angular_PID = PIDController(0.05, 0.4, 0.0, -2, 2, -1 * MAX_ROT_VEL, MAX_ROT_VEL)
 
         ######### Your code ends here #########
 
@@ -188,7 +216,7 @@ class GoalAngleController:
                 continue
 
             # Calculate control commands using angular PID controller and stop if close enough to goal
-            u = -1 * self.angular_PD.control(angle_error, rospy.get_rostime())
+            u = -1 * self.angular_PID.control(angle_error, rospy.get_rostime())
             ctrl_msg.angular.z = u
             self.vel_pub.publish(ctrl_msg)
 

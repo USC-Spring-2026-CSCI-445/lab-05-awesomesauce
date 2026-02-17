@@ -28,6 +28,7 @@ class PIDController:
         ######### Your code ends here #########
 
     def control(self, err, t):
+        pass
         # computer PID control action here
         ######### Your code starts here #########
 
@@ -40,7 +41,6 @@ class PDController:
     Generates control action taking into account instantaneous error (proportional action)
     and rate of change of error (derivative action).
     """
-
     def __init__(self, kP, kD, u_min, u_max):
         assert u_min < u_max, "u_min should be less than u_max"
         self.kP = kP
@@ -103,7 +103,7 @@ class GoalPositionController:
             return None
 
         # Calculate error in position and orientation
-        angle_error = math.atan2(sin(target_angle - current_angle), cos(target_angle - current_angle))
+        angle_error = math.atan2(math.sin(target_angle - current_angle), math.cos(target_angle - current_angle))
 
         # TODO
         distance_error = 0
@@ -169,7 +169,7 @@ class GoalAngleController:
             return None
 
         # Calculate error in orientation
-        angle_error = math.atan2(sin(target_angle - self.current_position["theta"]), cos(target_angle - self.current_position["theta"]))
+        angle_error = math.atan2(math.sin(self.goal_angle - self.current_position["theta"]), math.cos(self.goal_angle - self.current_position["theta"]))
 
         # Ensure angle error is within -pi to pi range
         if angle_error > math.pi:

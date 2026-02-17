@@ -9,6 +9,9 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 
+MAX_ROT_VEL = 2.84
+MAX_LIN_VEL = 0.22
+
 
 # PID controller class for both linear and angular control
 class PIDController:
@@ -38,20 +41,37 @@ class PDController:
     and rate of change of error (derivative action).
     """
 
-    def __init__(self, kP, kD, kS, u_min, u_max):
+    def __init__(self, kP, kD, u_min, u_max):
         assert u_min < u_max, "u_min should be less than u_max"
-        # Initialize PD variables here
-        ######### Your code starts here #########
+        self.kP = kP
+        self.kD = kD
+        self.u_min = u_min
+        self.u_max = u_max
+        self.t_prev = None
+        self.e_prev = 0.0
 
-        ######### Your code ends here #########
+    def clamp(self, output):
+        if output < self.u_min:
+            return self.u_min
+        elif output > self.u_max:
+            return self.u_max
+        else:
+            return output
 
     def control(self, err, t):
+        if (self.t_prev is None):
+            self.t_prev = t
+            return 0
+
         dt = t - self.t_prev
-        # Compute PD control action here
-        ######### Your code starts here #########
+        self.t_prev = t
 
-        ######### Your code ends here #########
+        if dt <= rospy.Duration.from_sec(1e-10):
+            return 0
 
+        de = err - self.e_prev
+        output = (self.kP * err) + (self.kD * (de/dt.to_sec()))
+        return self.clamp(output)
 
 # Class for controlling the robot to reach a goal position
 class GoalPositionController:
@@ -68,9 +88,7 @@ class GoalPositionController:
         self.current_position = None
 
         # define PID controllers for linear and angular velocities
-        ######### Your code starts here #########
-
-        ######### Your code ends here #########
+        self.angular_PD = PDController(0.2, 0.2, -1 * MAX_ROT_VEL, MAX_ROT_VEL)
 
     def odom_callback(self, msg):
         # Extracting current position from Odometry message
@@ -85,9 +103,11 @@ class GoalPositionController:
             return None
 
         # Calculate error in position and orientation
-        ######### Your code starts here #########
+        angle_error = math.atan2(sin(target_angle - current_angle), cos(target_angle - current_angle))
 
-        ######### Your code ends here #########
+        # TODO
+        distance_error = 0
+
 
         # Ensure angle error is within -pi to pi range
         if angle_error > math.pi:
@@ -109,10 +129,10 @@ class GoalPositionController:
 
             # Calculate control commands using linear and angular PID controllers and stop if close enough to goal
             ######### Your code starts here #########
-
+            u = -1 * self.angular_PD.control(error, rospy.get_rostime())
+            ctrl_msg.angular.z = u
 
             ######### Your code ends here #########
-
             rate.sleep()
 
 
@@ -132,6 +152,7 @@ class GoalAngleController:
 
         # define PID controller angular velocity
         ######### Your code starts here #########
+        self.angular_PD = PDController(0.2, 0.2, -1 * MAX_ROT_VEL, MAX_ROT_VEL)
 
         ######### Your code ends here #########
 
@@ -149,6 +170,7 @@ class GoalAngleController:
 
         # Calculate error in orientation
         ######### Your code starts here #########
+        angle_error = math.atan2(sin(target_angle - current_angle), cos(target_angle - current_angle))
 
         ######### Your code ends here #########
 
@@ -169,9 +191,9 @@ class GoalAngleController:
                 continue
 
             # Calculate control commands using angular PID controller and stop if close enough to goal
-            ######### Your code starts here #########
-
-            ######### Your code ends here #########
+            u = -1 * self.angular_PD.control(error, rospy.get_rostime())
+            ctrl_msg.angular.z = u
+            self.vel_pub.publish(ctrl_msg)
 
             rate.sleep()
 

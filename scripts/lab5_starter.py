@@ -120,7 +120,8 @@ class GoalPositionController:
         self.current_position = None
 
         # define PID controllers for linear and angular velocities
-        self.angular_PID = PIDController(0.2, 0.2, 0.2, -1000, 1000, -1 * MAX_ROT_VEL, MAX_ROT_VEL)
+        self.angular_PID = PIDController(1, 0.2, 0.01, -1, 1, -1 * MAX_ROT_VEL, MAX_ROT_VEL)
+        self.linear_PID = PIDController(1, 0.5, 0.00, -0.3, 0.3, -1 * MAX_LIN_VEL, MAX_LIN_VEL)
 
     def odom_callback(self, msg):
         # Extracting current position from Odometry message
@@ -135,12 +136,15 @@ class GoalPositionController:
             return None
 
         # Calculate error in position and orientation
-        angle_error = math.atan2(math.sin(target_angle - current_angle), math.cos(target_angle - current_angle))
+        ex = self.goal_position["x"] - self.current_position["x"]
+        ey = self.goal_position["y"] - self.current_position["y"]
+        # print(ex, ey)
+        distance_error = -1 * math.hypot(ex, ey)
 
-        # TODO
-        distance_error = 0
 
+        goal_angle = math.atan2(ey, ex)
 
+        angle_error = -1 * math.atan2(math.sin(goal_angle - self.current_position["theta"]), math.cos(goal_angle - self.current_position["theta"]))
         # Ensure angle error is within -pi to pi range
         if angle_error > math.pi:
             angle_error -= 2 * math.pi
@@ -153,15 +157,21 @@ class GoalPositionController:
         rate = rospy.Rate(10)  # 10 Hz
         ctrl_msg = Twist()
         while not rospy.is_shutdown():
-            error = self.calculate_error()
+            errs = self.calculate_error()
+            if (errs is not None):
+                distance_error, angle_error = errs
+                # Calculate control commands using linear and angular PID controllers and stop if close enough to goal
+                u = -1 * self.angular_PID.control(angle_error, rospy.get_rostime())
+                ctrl_msg.angular.z = u
 
-            if error is None:
-                continue
-            distance_error, angle_error = error
+                if (abs(u) < 0.2):
+                    v = -1 * self.linear_PID.control(distance_error, rospy.get_rostime())
+                    ctrl_msg.linear.x = v
+                    print(distance_error, v)
+                else:
+                    ctrl_msg.linear.x = 0
 
-            # Calculate control commands using linear and angular PID controllers and stop if close enough to goal
-            u = -1 * self.angular_PID.control(error, rospy.get_rostime())
-            ctrl_msg.angular.z = u
+            self.vel_pub.publish(ctrl_msg)
             rate.sleep()
 
 

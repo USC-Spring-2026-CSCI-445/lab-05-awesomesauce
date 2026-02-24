@@ -135,7 +135,8 @@ class GoalPositionController:
         self.current_position = {"x": pose.position.x, "y": pose.position.y, "theta": theta}
         posx_graph.append(pose.position.x)
         posy_graph.append(pose.position.y)
-
+        plt.plot(posx_graph, posy_graph)
+        plt.show()
     def calculate_error(self) -> Optional[Tuple]:
         if self.current_position is None:
             return None

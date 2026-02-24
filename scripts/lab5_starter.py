@@ -9,6 +9,9 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 
+posx_graph=[]
+posy_graph=[]
+
 MAX_ROT_VEL = 2.84
 MAX_LIN_VEL = 0.22
 
@@ -130,6 +133,8 @@ class GoalPositionController:
         _, _, theta = euler_from_quaternion([orientation.x, orientation.y, orientation.z, orientation.w])
 
         self.current_position = {"x": pose.position.x, "y": pose.position.y, "theta": theta}
+        posx_graph.append(pose.position.x)
+        posy_graph.append(pose.position.y)
 
     def calculate_error(self) -> Optional[Tuple]:
         if self.current_position is None:

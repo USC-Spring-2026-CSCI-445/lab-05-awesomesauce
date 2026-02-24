@@ -262,3 +262,6 @@ if __name__ == "__main__":
         controller.control_robot()
     except rospy.ROSInterruptException:
         pass
+
+    plt.plot(posx_graph, posy_graph)
+    plt.show()

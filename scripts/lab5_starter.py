@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 from argparse import ArgumentParser
 import math
 import queue
-
+import matplotlib.pyplot as plt
 import rospy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry

@@ -264,4 +264,4 @@ if __name__ == "__main__":
         pass
 
     plt.plot(posx_graph, posy_graph)
-    plt.show()
+    plt.savefig("test.png")
